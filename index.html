@@ -240,23 +240,18 @@
   </footer>
 
   <script>
-    /************************************************************************
-     * SimStock — Virtual Stock Market Simulator
-     * - Single-file advanced simulator
-     * - Persistence via localStorage
-     * - Market engine: random-walk + news events + simple limit order matching
-     *
-     * IMPORTANT: Educational simulator ONLY. Does not connect to real exchanges.
-     ************************************************************************/
 
     // ---------- Utilities ----------
     const $ = id => document.getElementById(id);
     const fmt = n => (typeof n==='number' ? n.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : n);
     const nowIso = () => new Date().toISOString();
+    const STORE_KEY = 'simstock_v1';
+    const CODE_VERSION = 2; // 🔼 bump this whenever you change game logic
+
 
     // ---------- Persistent state ----------
-    const STORE_KEY = 'simstock_v1';
     let state = {
+      __version: CODE_VERSION, 
       cash: 1000,   // virtual starting cash (user can deposit)
       portfolio: {}, // symbol -> {qty, avg}
       tx: [],        // transaction history
@@ -266,30 +261,58 @@
     };
 
     function save() { localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
-    function load() {
-      const raw = localStorage.getItem(STORE_KEY);
-      if(raw) {
-        try { state = JSON.parse(raw); }
-        catch(e){ console.warn('load failed',e) }
-      } else {
-        // seed with example symbols
-        state.symbols = {
-          TKTL: mkSymbol('TechTurtle', 221.15, 2.0),
-          LOWS: mkSymbol('Lows', 242.48, 2.0),
-          MICSO: mkSymbol('Microsoft', 491.92, 2.0),
-          AMAZ: mkSymbol('Amazon', 233.22, 2.0),
-          NEXA: mkSymbol('NexaHealth', 198.32, 2.0),
-          MCD: mkSymbol('McDonalds', 311.82, 2.0),
-          GOOG: mkSymbol('Google', 320.21, 2.0),
-          IHOP: mkSymbol('IHOP', 45.22, 2.0),
-          TESL: mkSymbol('TeslaCompany', 430.91, 2.0),
-          FORD: mkSymbol('FORD', 13.28, 2.0),
-          ZYRO: mkSymbol('ZyroSystems', 259.99, 2.0),
-        };
-        save();
-      }
-    }
+    
+    function seedFreshState() {
+  state = {
+    __version: CODE_VERSION,
+    cash: 1000,
+    portfolio: {},
+    tx: [],
+    orders: [],
+    symbols: {
+      TKTL: mkSymbol('TechTurtle', 221.15, 2.0),
+      LOWS: mkSymbol('Lows', 242.48, 2.0),
+      MICSO: mkSymbol('Microsoft', 491.92, 2.0),
+      AMAZ: mkSymbol('Amazon', 233.22, 2.0),
+      NEXA: mkSymbol('NexaHealth', 198.32, 2.0),
+      MCD: mkSymbol('McDonalds', 311.82, 2.0),
+      GOOG: mkSymbol('Google', 320.21, 2.0),
+      IHOP: mkSymbol('IHOP', 45.22, 2.0),
+      TESL: mkSymbol('TeslaCompany', 430.91, 2.0),
+      FORD: mkSymbol('FORD', 13.28, 2.0),
+      ZYRO: mkSymbol('ZyroSystems', 259.99, 2.0),
+    },
+    settings: { speed:600, vol:1.2, running:true, tick:0, day:1 }
+  };
+  save();
+}
 
+    
+    function load() {
+  const raw = localStorage.getItem(STORE_KEY);
+
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+
+      // 🔥 VERSION CHECK
+      if (!parsed.__version || parsed.__version !== CODE_VERSION) {
+        console.warn('Old save detected — wiping storage');
+        localStorage.removeItem(STORE_KEY);
+        seedFreshState();
+      } else {
+        state = parsed;
+      }
+    } catch (e) {
+      console.warn('Load failed, resetting', e);
+      seedFreshState();
+    }
+  } else {
+    seedFreshState();
+  }
+}
+
+ 
     function mkSymbol(name, price, vol=1.5){
       const hist = [];
       for(let i=0;i<120;i++){ hist.push({t:Date.now()-((119-i)*60000), p:price*(1 + (Math.random()-0.5)*0.02)}); }
@@ -325,35 +348,48 @@
     const resetBtn = $('reset-btn');
     // ---- RESET BUTTON ----
 resetBtn.addEventListener('click', () => {
-  if (!confirm("Reset ALL data and restore starting cash ($1000)?")) return;
+  if (!confirm("Reset ALL data and generate a NEW market?")) return;
 
-  // Reset core state
-  state.cash = 1000;
-  state.portfolio = {};
-  state.tx = [];
-  state.orders = [];
-
-  // Optional: reset market day/tick
-  state.settings.tick = 0;
-  state.settings.day = 1;
-
-  // Optional: reset all symbol prices to their original open price
-  Object.keys(state.symbols).forEach(sym => {
-    const s = state.symbols[sym];
-    s.price = s.open;
-    s.history = [];
-    for (let i = 0; i < 120; i++) {
-      s.history.push({
-        t: Date.now() - ((119 - i) * 60000),
-        p: s.open
-      });
+  // Completely wipe saved data
+  localStorage.removeItem(STORE_KEY);
+  location.reload(); // 🔥 reloads page using UPDATED CODE
+  
+  // Rebuild state from scratch
+  state = {
+    cash: 1000,
+    portfolio: {},
+    tx: [],
+    orders: [],
+    symbols: {
+      TKTL: mkSymbol('TechTurtle', 221.15, 2.0),
+      LOWS: mkSymbol('Lows', 242.48, 2.0),
+      MICSO: mkSymbol('Microsoft', 491.92, 2.0),
+      AMAZ: mkSymbol('Amazon', 233.22, 2.0),
+      NEXA: mkSymbol('NexaHealth', 198.32, 2.0),
+      MCD: mkSymbol('McDonalds', 311.82, 2.0),
+      GOOG: mkSymbol('Google', 320.21, 2.0),
+      IHOP: mkSymbol('IHOP', 45.22, 2.0),
+      TESL: mkSymbol('TeslaCompany', 430.91, 2.0),
+      FORD: mkSymbol('FORD', 13.28, 2.0),
+      ZYRO: mkSymbol('ZyroSystems', 259.99, 2.0),
+    },
+    settings: {
+      speed: Number(speedSelect.value),
+      vol: Number(volRange.value),
+      running: true,
+      tick: 0,
+      day: 1
     }
-  });
+  };
 
-  save();      // store new clean state
-  render();    // rerender UI
+  selectedSymbol = Object.keys(state.symbols)[0];
+
+  save();
+  renderAll();
+
+  stopMarket();
+  startMarket();
 });
-
     const addSymbolBtn = $('add-symbol-btn');
     const addEventBtn = $('add-event');
     const eventText = $('event-text');
