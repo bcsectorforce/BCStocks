@@ -695,16 +695,7 @@ resetBtn.addEventListener('click', () => {
       save();
       if(state.settings.running) startMarket();
     };
-    volRange.oninput = e => { state.settings.vol = Number(e.target.value); save(); };
-
-   
-    resetBtn.onclick = () => {
-      if(!confirm('Reset simulator to default state? This will clear portfolio and history.')) return;
-      localStorage.removeItem(STORE_KEY);
-      load();
-      selectedSymbol = Object.keys(state.symbols)[0];
-      renderAll();
-    };
+    volRange.oninput = e => { state.settings.vol = Number(e.target.value); save(); }
 
     addEventBtn.onclick = () => {
       const txt = eventText.value.trim() || 'News';
